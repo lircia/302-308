@@ -48,20 +48,24 @@ npm run dev
 
 表结构文件路径：`database/redirects.sql`。
 
-## 部署
+## 使用 Cloudflare 连接 Git 部署
 
 ```bash
 npm run deploy
 ```
 
-如果使用 Cloudflare 控制台的 Git 自动部署：
+在 Cloudflare Workers 的 Git 部署设置中填写：
 
-- Build command：留空，或填写 `npm run build`
-- Deploy command：`npm run deploy`
+- Root directory：仓库根目录
+- Build command：`npm run build`
+- Deploy command：`npx wrangler deploy`
 
-不要只使用 `npx wrangler deploy`，因为 Astro 的 Worker 入口需要先由 `npm run build` 生成。
+也可以将 Build command 留空，把 Deploy command 设置为 `npm run deploy`。不要在没有执行 `npm run build` 的情况下直接运行 `npx wrangler deploy`，因为 Astro 的 Worker 入口需要先生成到 `dist/server`。
 
-GitHub Actions 还需要配置以下 Secrets：
+Cloudflare 部署成功后，在 Worker 的 Variables / Secrets / Bindings 中配置：
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+- `URL`：例如 `https://kare.dpdns.org/`
+- `ADMIN`：管理员密钥 Secret
+- `DB`：D1 Database binding
+
+`DB` 的绑定名必须是 `DB`；D1 表结构请手动执行 `database/redirects.sql`。
