@@ -16,6 +16,7 @@ export function getEnv(): AppEnv {
 export function json(data: unknown, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
   headers.set('content-type', 'application/json; charset=utf-8');
+  headers.set('x-domain-redirect-worker', '302-308');
   return new Response(JSON.stringify(data), { ...init, headers });
 }
 
@@ -26,6 +27,9 @@ export function jsonError(message: string, status = 400): Response {
 export function text(message: string, status: number): Response {
   return new Response(`${message}\n`, {
     status,
-    headers: { 'content-type': 'text/plain; charset=utf-8' },
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'x-domain-redirect-worker': '302-308',
+    },
   });
 }

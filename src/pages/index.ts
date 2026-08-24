@@ -99,5 +99,5 @@ export const ALL: APIRoute = ({ request }) => {
   const env = getEnv();
   if (new URL(request.url).pathname !== '/') return text('Not found.', 404);
   if (!isAdminHost(request, env)) return text('Admin URL is not configured for this host.', 404);
-  return new Response(ADMIN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
+  return new Response(ADMIN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'x-domain-redirect-worker': '302-308' } });
 };

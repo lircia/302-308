@@ -15,6 +15,7 @@ const handleRequest: APIRoute = async ({ request }) => {
       headers: {
         location,
         'cache-control': 'no-store',
+        'x-domain-redirect-worker': '302-308',
       },
     });
   } catch (error) {

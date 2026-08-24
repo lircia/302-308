@@ -69,3 +69,5 @@ Cloudflare 部署成功后，在 Worker 的 Variables / Secrets / Bindings 中�
 - `DB`：D1 Database binding
 
 `DB` 的绑定名必须是 `DB`；D1 表结构请手动执行 `database/redirects.sql`。
+
+`kare.dpdns.org` 还必须在同一个 Worker `302-308` 的 Custom Domains 中绑定。若该域名仍绑定在 Cloudflare 默认的 Hello World Worker 上，访问时仍会看到 Hello World；`URL` 变量本身不会自动把域名转移到新 Worker。
