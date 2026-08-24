@@ -70,4 +70,6 @@ Cloudflare 部署成功后，在 Worker 的 Variables / Secrets / Bindings 中�
 
 `DB` 的绑定名必须是 `DB`；D1 表结构请手动执行 `database/redirects.sql`。
 
+`compatibility_date` 必须不晚于 Cloudflare 实际部署当天。若部署日志显示当前日期为 `2026-08-24`，配置不能填写 `2026-08-25`，否则 Cloudflare 会拒绝部署。
+
 `kare.dpdns.org` 还必须在同一个 Worker `302-308` 的 Custom Domains 中绑定。若该域名仍绑定在 Cloudflare 默认的 Hello World Worker 上，访问时仍会看到 Hello World；`URL` 变量本身不会自动把域名转移到新 Worker。
