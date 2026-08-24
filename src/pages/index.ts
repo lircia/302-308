@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { isAdminHost } from '../lib/admin';
 import { getEnv, text } from '../lib/cloudflare';
+import { findRedirect } from '../lib/redirect';
 
 const ADMIN_HTML = `<!doctype html>
 <html lang="zh-CN">
@@ -95,9 +96,26 @@ const ADMIN_HTML = `<!doctype html>
 </body>
 </html>`;
 
-export const ALL: APIRoute = ({ request }) => {
+export const ALL: APIRoute = async ({ request }) => {
   const env = getEnv();
   if (new URL(request.url).pathname !== '/') return text('Not found.', 404);
-  if (!isAdminHost(request, env)) return text('Admin URL is not configured for this host.', 404);
-  return new Response(ADMIN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'x-domain-redirect-worker': '302-308' } });
+  if (isAdminHost(request, env)) {
+    return new Response(ADMIN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'x-domain-redirect-worker': '302-308' } });
+  }
+
+  try {
+    const location = await findRedirect(new URL(request.url).hostname, env);
+    if (!location) return text('No redirect configured for this domain.', 404);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location,
+        'cache-control': 'no-store',
+        'x-domain-redirect-worker': '302-308',
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return text(error instanceof Error ? error.message : 'Redirect configuration error.', 500);
+  }
 };
