@@ -1,39 +1,50 @@
-import { REDIRECTS } from '../config/redirects';
+import type { AppEnv } from './cloudflare';
 
-const HTTP_PROTOCOLS = new Set(['http:', 'https:']);
+export interface RedirectRow {
+  domain: string;
+  target_url: string;
+  created_at: string;
+}
 
-function normalizeHostname(hostname: string): string {
+export function normalizeHostname(hostname: string): string {
   return hostname.trim().toLowerCase().replace(/\.$/, '');
 }
 
-function getTarget(hostname: string): URL | null {
-  const configuredTarget = REDIRECTS[normalizeHostname(hostname)];
+export function normalizeDomain(input: string): string | null {
+  const domain = normalizeHostname(input);
 
-  if (!configuredTarget) {
+  if (!domain || domain.includes('/') || domain.includes('?') || domain.includes('#') || domain.includes(':')) {
     return null;
   }
 
-  let target: URL;
   try {
-    target = new URL(configuredTarget);
+    const parsed = new URL(`https://${domain}`);
+    return parsed.hostname === domain ? domain : null;
   } catch {
-    throw new Error(`Invalid redirect target for ${hostname}`);
+    return null;
   }
-
-  if (!HTTP_PROTOCOLS.has(target.protocol)) {
-    throw new Error(`Redirect target for ${hostname} must use http or https`);
-  }
-
-  return target;
 }
 
-/**
- * 仅按访问域名生成重定向地址。
- * 访问 URL 的协议、路径和查询参数都不会修改配置中的目标 URL。
- */
-export function getRedirectUrl(request: Request): string | null {
-  const requestUrl = new URL(request.url);
-  const target = getTarget(requestUrl.hostname);
+export function validateTargetUrl(input: string): string | null {
+  const target = input.trim();
 
-  return target?.toString() ?? null;
+  try {
+    const parsed = new URL(target);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? target : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function findRedirect(hostname: string, env: AppEnv): Promise<string | null> {
+  if (!env.DB) {
+    throw new Error('D1 binding DB is not configured');
+  }
+
+  const row = await env.DB
+    .prepare('SELECT target_url FROM redirects WHERE domain = ?1 LIMIT 1')
+    .bind(normalizeHostname(hostname))
+    .first<{ target_url: string }>();
+
+  return row?.target_url ?? null;
 }

@@ -1,0 +1,6 @@
+name = "302-308"
+compatibility_date = "2026-08-25"
+
+[assets]
+binding = "ASSETS"
+directory = "./dist"

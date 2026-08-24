@@ -1,20 +1,17 @@
 import type { APIRoute } from 'astro';
-import { REDIRECT_STATUS } from '../config/redirects';
-import { getRedirectUrl } from '../lib/redirect';
+import { getEnv, text } from '../lib/cloudflare';
+import { findRedirect } from '../lib/redirect';
 
-const handleRequest: APIRoute = ({ request }) => {
+const handleRequest: APIRoute = async ({ request }) => {
   try {
-    const location = getRedirectUrl(request);
+    const location = await findRedirect(new URL(request.url).hostname, getEnv());
 
     if (!location) {
-      return new Response('No redirect configured for this domain.\n', {
-        status: 404,
-        headers: { 'content-type': 'text/plain; charset=utf-8' },
-      });
+      return text('No redirect configured for this domain.', 404);
     }
 
     return new Response(null, {
-      status: REDIRECT_STATUS,
+      status: 302,
       headers: {
         location,
         'cache-control': 'no-store',
@@ -22,10 +19,7 @@ const handleRequest: APIRoute = ({ request }) => {
     });
   } catch (error) {
     console.error(error);
-    return new Response('Redirect configuration error.\n', {
-      status: 500,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    });
+    return text(error instanceof Error ? error.message : 'Redirect configuration error.', 500);
   }
 };
 
