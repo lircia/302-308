@@ -40,7 +40,6 @@ URL=https://admin.example.com
 
 ## 本地运行
 
-本机开发依赖复用已有 Astro、Cloudflare 适配器和 Wrangler，不需要重新安装：
 
 ```bash
 npm run dev
@@ -48,7 +47,7 @@ npm run dev
 
 表结构文件路径：`database/redirects.sql`。
 
-## 使用 Cloudflare 连接 Git 部署
+## 使用 Cloudflare 连接 Git 部署 Worker
 
 ```bash
 npm run deploy
@@ -73,3 +72,40 @@ Cloudflare 部署成功后，在 Worker 的 Variables / Secrets / Bindings 中�
 `compatibility_date` 必须不晚于 Cloudflare 实际部署当天。若部署日志显示当前日期为 `2026-08-24`，配置不能填写 `2026-08-25`，否则 Cloudflare 会拒绝部署。
 
 `kare.dpdns.org` 还必须在同一个 Worker `302-308` 的 Custom Domains 中绑定。若该域名仍绑定在 Cloudflare 默认的 Hello World Worker 上，访问时仍会看到 Hello World；`URL` 变量本身不会自动把域名转移到新 Worker。
+
+## 使用 Cloudflare Pages 连接同一 Git 仓库
+
+Pages 需要在 Cloudflare 中新建一个独立的 Pages 项目，选择同一个 Git 仓库。项目设置如下：
+
+- Root directory：`pages`
+- Build command：留空
+- Build output directory：`public`
+
+Pages 会自动读取 `pages/public` 的纯静态网页和 `pages/functions` 的 Pages Functions。不要把 Pages 项目的 Root directory 设置为仓库根目录，否则会把 Worker 项目当成 Pages 项目构建。
+
+这样同一个仓库会按目录自动区分：
+
+- Worker 项目：Root directory 为仓库根目录，Build command 为 `npm run build`，Deploy command 为 `npx wrangler deploy`
+- Pages 项目：Root directory 为 `pages`，不执行构建命令，输出目录为 `public`
+
+### Pages 的变量和 D1 绑定
+
+在 Pages 项目的 Settings / Variables and Bindings 中配置与 Worker 相同的内容：
+
+- `URL`：管理员域名，例如 `https://kare.dpdns.org/`
+- `ADMIN`：管理员密钥 Secret
+- `DB`：D1 Database binding，绑定到与 Worker 相同的 D1 数据库
+
+Worker 和 Pages 可以同时绑定同一个 D1 数据库；两边的绑定名称都必须是 `DB`。Pages 的 `URL` 只允许其对应域名显示管理后台，其他绑定域名会按 D1 中的 `redirects` 表执行重定向。
+
+同一个域名不能同时绑定到 Worker 和 Pages。若两者同时上线，请给它们设置不同的管理域名；例如 Worker 使用 `worker-admin.example.com`，Pages 使用 `pages-admin.example.com`，两者仍可绑定同一个 D1。
+
+Pages 的静态管理页面路径为 `pages/public/index.html`，D1 和登录 API 位于 `pages/functions`。虽然页面本身是纯静态文件，但使用 D1 必须启用 Pages Functions；Functions 不会把页面变成 Astro SSR。
+
+表结构仍然只需在 D1 控制台的 SQL 编辑器中手动执行一次：
+
+```text
+database/redirects.sql
+```
+
+不要在 Pages 项目中执行 `npx wrangler deploy`，也不要在 Worker 项目中使用 Pages 的输出目录。两者使用同一个 Git 仓库和 D1，但分别由 Cloudflare Workers 项目与 Cloudflare Pages 项目部署。

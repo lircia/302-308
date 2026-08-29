@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="same-origin">
+  <title>域名重定向管理后台</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, "Microsoft YaHei", sans-serif; }
+    body { margin: 0; background: #fff; color: #222; }
+    main { width: min(920px, calc(100% - 32px)); margin: 48px auto; }
+    h1 { font-size: 24px; font-weight: 600; margin: 0 0 28px; }
+    h2 { font-size: 18px; margin: 28px 0 14px; }
+    .panel { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    label { display: block; font-size: 14px; margin: 12px 0 6px; }
+    input { box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid #bbb; border-radius: 5px; font-size: 14px; }
+    button { border: 1px solid #222; background: #222; color: #fff; border-radius: 5px; padding: 9px 16px; cursor: pointer; }
+    button.secondary { background: #fff; color: #222; }
+    button.delete { background: #fff; border-color: #c33; color: #c33; padding: 6px 10px; }
+    .row { display: grid; grid-template-columns: 1fr 2fr auto; gap: 12px; align-items: end; }
+    .toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .message { min-height: 22px; color: #555; margin: 10px 0 0; }
+    .error { color: #b00020; }
+    .hidden { display: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid #e5e5e5; text-align: left; padding: 11px 8px; word-break: break-all; }
+    th:last-child, td:last-child { width: 80px; text-align: right; }
+    @media (max-width: 680px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>域名重定向管理后台</h1>
+    <section id="loginPanel" class="panel">
+      <label for="adminKey">后台密钥</label>
+      <input id="adminKey" type="password" autocomplete="current-password" placeholder="请输入 ADMIN 变量的值">
+      <button id="loginButton" type="button" style="margin-top: 14px">登录</button>
+      <p id="loginMessage" class="message"></p>
+    </section>
+    <section id="appPanel" class="hidden">
+      <div class="panel">
+        <div class="toolbar"><h2 style="margin: 0">添加重定向</h2><button id="logoutButton" class="secondary" type="button">退出登录</button></div>
+        <form id="addForm">
+          <div class="row">
+            <div><label for="domain">访问域名</label><input id="domain" required placeholder="aaa.sa.sia"></div>
+            <div><label for="target">重定向 URL</label><input id="target" type="url" required placeholder="https://example.com"></div>
+            <button type="submit">添加</button>
+          </div>
+        </form>
+        <p id="formMessage" class="message"></p>
+      </div>
+      <div class="panel">
+        <h2>现有重定向</h2>
+        <table><thead><tr><th>访问域名</th><th>重定向 URL</th><th>操作</th></tr></thead><tbody id="redirectRows"></tbody></table>
+        <p id="listMessage" class="message"></p>
+      </div>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const loginPanel = $('loginPanel');
+    const appPanel = $('appPanel');
+    const setMessage = (id, message, error = false) => { const el = $(id); el.textContent = message; el.className = error ? 'message error' : 'message'; };
+    async function api(path, options = {}) {
+      const headers = { ...(options.body ? { 'content-type': 'application/json' } : {}), ...(options.headers || {}) };
+      const response = await fetch(path, { credentials: 'same-origin', ...options, headers });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || '请求失败');
+      return data;
+    }
+    function showApp() { loginPanel.classList.add('hidden'); appPanel.classList.remove('hidden'); loadRows(); }
+    async function loadRows() {
+      try {
+        const data = await api('/api/admin/redirects');
+        const rows = $('redirectRows'); rows.replaceChildren();
+        for (const item of data.redirects) {
+          const tr = document.createElement('tr');
+          const domain = document.createElement('td'); domain.textContent = item.domain;
+          const target = document.createElement('td'); target.textContent = item.target_url;
+          const action = document.createElement('td');
+          const button = document.createElement('button'); button.className = 'delete'; button.textContent = '删除';
+          button.onclick = async () => { if (!confirm('确定删除这条重定向吗？')) return; try { await api('/api/admin/redirects', { method: 'DELETE', body: JSON.stringify({ domain: item.domain }) }); loadRows(); } catch (error) { setMessage('listMessage', error.message, true); } };
+          action.append(button); tr.append(domain, target, action); rows.append(tr);
+        }
+        setMessage('listMessage', data.redirects.length ? '' : '暂无重定向配置');
+      } catch (error) { setMessage('listMessage', error.message, true); }
+    }
+    $('loginButton').onclick = async () => { try { await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ key: $('adminKey').value }) }); showApp(); } catch (error) { setMessage('loginMessage', error.message, true); } };
+    $('logoutButton').onclick = async () => { await api('/api/admin/logout', { method: 'POST' }).catch(() => {}); location.reload(); };
+    $('addForm').onsubmit = async (event) => { event.preventDefault(); try { await api('/api/admin/redirects', { method: 'POST', body: JSON.stringify({ domain: $('domain').value, targetUrl: $('target').value }) }); event.target.reset(); setMessage('formMessage', '添加成功'); loadRows(); } catch (error) { setMessage('formMessage', error.message, true); } };
+    api('/api/admin/redirects').then(showApp).catch(() => {});
+  </script>
+</body>
+</html>
