@@ -1,6 +1,4 @@
+# Static shell security headers. API responses and redirects set their own headers.
 /*
-  Cache the static shell only. API responses and redirects set their own headers.
-*/
-/
   X-Content-Type-Options: nosniff
   Referrer-Policy: same-origin
