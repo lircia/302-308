@@ -88,6 +88,8 @@ Pages 会自动读取 `pages/public` 的纯静态网页和 `pages/functions` 的
 - Worker 项目：Root directory 为仓库根目录，Build command 为 `npm run build`，Deploy command 为 `npx wrangler deploy`
 - Pages 项目：Root directory 为 `pages`，不执行构建命令，输出目录为 `public`
 
+`pages/wrangler.toml` 是 Pages 专用配置，包含 `pages_build_output_dir = "./public"`；仓库根目录的 `wrangler.toml` 只供 Worker 使用，不能作为 Pages 配置。
+
 ### Pages 的变量和 D1 绑定
 
 在 Pages 项目的 Settings / Variables and Bindings 中配置与 Worker 相同的内容：
